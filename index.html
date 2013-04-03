@@ -2,6 +2,18 @@
     <body id="body">
         <div id="main_area">
             <canvas id="canvas" width="700" height="700"></canvas>
+            <h1>Lights Out! Clone</h1>
+            <p>
+                New Game:
+                <input type="button" value="Easy" onClick="newGame(0);" />
+                <input type="button" value="Medium" onClick="newGame(1);" />
+                <input type="button" value="Hard" onClick="newGame(2);" />
+            </p>
+            <p>
+                Click a cell to flip it and it's neighbour from on/off or off/on<br />
+                The game is over when you turn off all the lights<br />
+                And... that's it, really.<br />
+            <p>
         </div>
     </body>
 
@@ -14,59 +26,74 @@
         var strokeSize = 1;
         var mouseX = 0;
         var mouseY = 0;
-        
+        var gameOver = false;
+        var diffSettings = [ 1, 5, 50 ];
+
         ////
-        
-        for (var i = 0; i < lightsPerSide * lightsPerSide; i++) {
-            lights.push(false);
-        }
-        
-        randomizeLights(3);
-        render();
-        
+
         canvas.addEventListener('mousedown', onMouseDown);
         canvas.addEventListener('mousemove', onMouseMove);
-        
+
+        newGame(1);
         ////
-        
+
+        function newGame(difficulty) {
+            gameOver = false;
+            lights = [];
+            for (var i = 0; i < lightsPerSide * lightsPerSide; i++) {
+                lights.push(false);
+            }
+
+            randomizeLights(difficulty);
+            render();
+        }
+
         function onMouseDown(event) {
             if (event.which != 1)
                 return;
-            
-            var x = Math.floor(event.clientX / lightSize);
-            var y = Math.floor(event.clientY / lightSize);            
-            
-            flipLight(x, y);
+
+            updateMouseCoords(event);
+
+            flipLight(mouseX, mouseY);
+            checkWin();
             render();
         }
-        
+
         function onMouseMove(event) {
-            var x = Math.floor(event.clientX / lightSize);
-            var y = Math.floor(event.clientY / lightSize);            
-            
-            mouseX = x;
-            mouseY = y;
-            
+            updateMouseCoords(event);
             render();
         }
-        
+
+        function updateMouseCoords(event) {
+            var rect = canvas.getBoundingClientRect();
+            mouseX = Math.floor((event.clientX - rect.left) / lightSize);
+            mouseY = Math.floor((event.clientY - rect.top) / lightSize);
+        }
+
+        function checkWin() {
+            var win = true;
+            for (var i = 0; i < lights.length; i++)
+                if (lights[i])
+                    win = false;
+
+            gameOver = win;
+        }
+
         function randomizeLights(difficulty) {
             // number of times to flip lights
-            var times = [ 0, 1, 2, 5, 10, 50 ];
-            
-            for (var i = 0; i < times[difficulty]; i++) {
+            for (var i = 0; i < diffSettings[difficulty]; i++) {
                 var x = Math.floor(Math.random() * lightsPerSide);
                 var y = Math.floor(Math.random() * lightsPerSide);
-                
+
                 flipLight(x, y);
             }
         }
-        
+
         function flipLight(x, y) {
-            
+
             var idx = y * lightsPerSide + x;
             lights[idx] = !lights[idx];
-            
+
             if (x + 1 < lightsPerSide)
                 lights[idx + 1] = !lights[idx + 1];
             if (x - 1 >= 0)
@@ -75,50 +102,57 @@
                 lights[idx + lightsPerSide] = !lights[idx + lightsPerSide];
             if (y - 1 >= 0)
                 lights[idx - lightsPerSide] = !lights[idx - lightsPerSide];
-            
-            
-        }            
-            
+        }
+
         function render() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        
-            // draw grid and lights
-            for (var y = 0; y < lightsPerSide; y++) {
-                for (var x = 0; x < lightsPerSide; x++) {
-                    
-                    var idx = y * lightsPerSide + x;
-                    
-                    if (lights[idx]) {
-                        ctx.fillStyle = '#fff';
-                        ctx.strokeStyle = '#000';
-                    } else {
-                        ctx.fillStyle = '#777';
-                        ctx.strokeStyle = '#fff';
-                    }                    
-                                        
-                    drawRect(x, y, true, strokeSize);
-                    
-                    if ((x == mouseX && y == mouseY) || 
-                        (x == mouseX - 1 && y == mouseY) ||
-                        (x == mouseX + 1 && y == mouseY) ||
-                        (x == mouseX && y == mouseY - 1) ||
-                        (x == mouseX && y == mouseY + 1))
-                    {
-                        ctx.fillStyle = 'rgba(0, 0, 255, 0.1)';
-                        drawRect(x, y, false);
+
+            if (gameOver) {
+                ctx.fillStyle = '#000';
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = '#0f0';
+                ctx.strokeRect(0, 0, ctx.width - 1, ctx.height - 1);
+                ctx.font = 'bold 25px Arial';
+                ctx.fillText("You win! Start a new game with the buttons below", 50, 350);
+            } else {
+                // draw grid and lights
+                for (var y = 0; y < lightsPerSide; y++) {
+                    for (var x = 0; x < lightsPerSide; x++) {
+
+                        var idx = y * lightsPerSide + x;
+
+                        if (lights[idx]) {
+                            ctx.fillStyle = '#fff';
+                            ctx.strokeStyle = '#000';
+                        } else {
+                            ctx.fillStyle = '#777';
+                            ctx.strokeStyle = '#fff';
+                        }
+
+                        drawRect(x, y, true, strokeSize);
+
+                        if ((x == mouseX && y == mouseY) ||
+                            (x == mouseX - 1 && y == mouseY) ||
+                            (x == mouseX + 1 && y == mouseY) ||
+                            (x == mouseX && y == mouseY - 1) ||
+                            (x == mouseX && y == mouseY + 1))
+                        {
+                            ctx.fillStyle = 'rgba(0, 0, 255, 0.1)';
+                            drawRect(x, y, false);
+                        }
                     }
                 }
             }
         }
-        
+
         function drawRect(x, y, stroke, lineWidth) {
             ctx.fillRect(x * lightSize, y * lightSize, lightSize, lightSize);
-            
+
             if (stroke == true) {
                 ctx.lineWidth = lineWidth;
                 ctx.strokeRect(x * lightSize, y * lightSize, lightSize, lightSize);
             }
         }
-        
+
     </script>
 </html>
